@@ -11,37 +11,36 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Select Xcode
+      - name: Select latest Xcode
         run: sudo xcode-select -s /Applications/Xcode.app
 
-      - name: Patch project signing settings
+      - name: Patch project signing
         run: |
           sed -i '' 's/DEVELOPMENT_TEAM = [^;]*;/DEVELOPMENT_TEAM = "";/g' bad_query.xcodeproj/project.pbxproj
-          sed -i '' 's/ProvisioningStyle = Automatic;/ProvisioningStyle = Manual;/g' bad_query.xcodeproj/project.pbxproj
           sed -i '' 's/CODE_SIGN_STYLE = Automatic;/CODE_SIGN_STYLE = Manual;/g' bad_query.xcodeproj/project.pbxproj
+          sed -i '' 's/ProvisioningStyle = Automatic;/ProvisioningStyle = Manual;/g' bad_query.xcodeproj/project.pbxproj
 
-      - name: Build Application (.app)
+      - name: Build and Archive
         run: |
-          xcodebuild build \
+          xcodebuild archive \
             -project bad_query.xcodeproj \
             -scheme bad_query \
             -configuration Release \
             -destination 'generic/platform=iOS' \
-            -derivedDataPath build \
+            -archivePath build/bad_query.xcarchive \
             CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGN_IDENTITY="-" \
             CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGN_IDENTITY="" \
-            AUTOMATIC_SIGNING_ALLOWED=NO \
-            PROVISIONING_PROFILE_SPECIFIER=""
+            AUTOMATIC_SIGNING_ALLOWED=NO
 
       - name: Package into IPA
         run: |
           mkdir -p Payload
-          cp -r build/Build/Products/Release-iphoneos/bad_query.app Payload/
+          cp -r build/bad_query.xcarchive/Products/Applications/*.app Payload/
           zip -r bad_query.ipa Payload
 
       - name: Upload IPA Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: bad_query-unsigned-ipa
+          name: bad_query-ipa
           path: bad_query.ipa
