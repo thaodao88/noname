@@ -1,4 +1,4 @@
-name: Build unsigned iOS IPA
+name: Build iOS IPA
 
 on:
   workflow_dispatch:
@@ -10,26 +10,13 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-              - name: Patch and verify Xcode project format
+
+      - name: Patch project format
         run: |
           PROJECT="bad_query.xcodeproj/project.pbxproj"
-
-          echo "=== Before patch ==="
-          grep -nE 'objectVersion|preferredProjectObjectVersion' "$PROJECT" || true
-
-          sed -i '' \
-            -e 's/objectVersion = 110;/objectVersion = 77;/g' \
-            -e 's/preferredProjectObjectVersion = 110;/preferredProjectObjectVersion = 77;/g' \
-            "$PROJECT"
-
-          echo "=== After patch ==="
+          sed -i '' 's/objectVersion = 110;/objectVersion = 77;/g' "$PROJECT"
+          sed -i '' 's/preferredProjectObjectVersion = 110;/preferredProjectObjectVersion = 77;/g' "$PROJECT"
           grep -nE 'objectVersion|preferredProjectObjectVersion' "$PROJECT"
-
-          echo "=== Commit checked out by runner ==="
-          git log -1 --oneline
-
-      - name: Show Xcode version
-        run: xcodebuild -version
 
       - name: Build unsigned archive
         run: |
@@ -48,18 +35,18 @@ jobs:
         run: |
           APP_PATH="$PWD/build/bad_query.xcarchive/Products/Applications/bad_query.app"
 
-          test -d "$APP_PATH" || {
+          if [ ! -d "$APP_PATH" ]; then
             echo "Không tìm thấy .app trong archive"
             find "$PWD/build/bad_query.xcarchive" -type d -name "*.app"
             exit 1
-          }
+          fi
 
           rm -rf Payload bad_query.ipa
           mkdir -p Payload
           cp -R "$APP_PATH" Payload/
           ditto -c -k --sequesterRsrc --keepParent Payload bad_query.ipa
 
-      - name: Upload unsigned IPA
+      - name: Upload IPA artifact
         uses: actions/upload-artifact@v4
         with:
           name: bad_query-unsigned-ipa
