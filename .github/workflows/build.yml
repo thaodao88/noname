@@ -10,6 +10,23 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+              - name: Patch and verify Xcode project format
+        run: |
+          PROJECT="bad_query.xcodeproj/project.pbxproj"
+
+          echo "=== Before patch ==="
+          grep -nE 'objectVersion|preferredProjectObjectVersion' "$PROJECT" || true
+
+          sed -i '' \
+            -e 's/objectVersion = 110;/objectVersion = 77;/g' \
+            -e 's/preferredProjectObjectVersion = 110;/preferredProjectObjectVersion = 77;/g' \
+            "$PROJECT"
+
+          echo "=== After patch ==="
+          grep -nE 'objectVersion|preferredProjectObjectVersion' "$PROJECT"
+
+          echo "=== Commit checked out by runner ==="
+          git log -1 --oneline
 
       - name: Show Xcode version
         run: xcodebuild -version
