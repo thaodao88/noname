@@ -1,0 +1,66 @@
+name: Build iOS IPA
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Check project format
+        run: |
+          PROJECT="bad_query.xcodeproj/project.pbxproj"
+          echo "Project file:"
+          test -f "$PROJECT"
+          grep -nE "objectVersion|preferredProjectObjectVersion" "$PROJECT" || true
+
+      - name: Patch project format
+        run: |
+          PROJECT="bad_query.xcodeproj/project.pbxproj"
+
+          sed -i '' \
+            -e 's/objectVersion = 110;/objectVersion = 77;/g' \
+            -e 's/preferredProjectObjectVersion = 110;/preferredProjectObjectVersion = 77;/g' \
+            "$PROJECT"
+
+          echo "After patch:"
+          grep -nE "objectVersion|preferredProjectObjectVersion" "$PROJECT"
+
+      - name: Build unsigned archive
+        run: |
+          xcodebuild clean archive \
+            -project bad_query.xcodeproj \
+            -scheme bad_query \
+            -configuration Release \
+            -destination "generic/platform=iOS" \
+            -archivePath "$PWD/build/bad_query.xcarchive" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            AUTOMATIC_SIGNING_ALLOWED=NO
+
+      - name: Package IPA
+        run: |
+          APP_PATH="$PWD/build/bad_query.xcarchive/Products/Applications/bad_query.app"
+
+          if [ ! -d "$APP_PATH" ]; then
+            echo "Không tìm thấy bad_query.app"
+            find "$PWD/build/bad_query.xcarchive" -type d -name "*.app"
+            exit 1
+          fi
+
+          rm -rf Payload bad_query.ipa
+          mkdir -p Payload
+          cp -R "$APP_PATH" Payload/
+          ditto -c -k --sequesterRsrc --keepParent Payload bad_query.ipa
+
+      - name: Upload IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: bad_query-unsigned-ipa
+          path: bad_query.ipa
+          if-no-files-found: error
