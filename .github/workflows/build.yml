@@ -36,7 +36,7 @@ jobs:
           APP_PATH="$PWD/build/bad_query.xcarchive/Products/Applications/bad_query.app"
 
           if [ ! -d "$APP_PATH" ]; then
-            echo "Không tìm thấy .app trong archive"
+            echo "App không tồn tại trong archive"
             find "$PWD/build/bad_query.xcarchive" -type d -name "*.app"
             exit 1
           fi
